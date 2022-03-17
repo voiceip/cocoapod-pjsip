@@ -43,7 +43,6 @@ Pod::Spec.new do |s|
   s.ios.vendored_libraries  = [
                                 # 'build/openh264/lib/*.a',
                                 'build/openssl/lib/ios/*.a',
-                                'build/opus/dependencies/lib/*.a',
                                 'build/pjproject/src/pjlib/lib/*ios.a',
                                 'build/pjproject/src/pjlib-util/lib/*ios.a',
                                 'build/pjproject/src/pjmedia/lib/*ios.a',
@@ -73,7 +72,6 @@ Pod::Spec.new do |s|
   s.osx.vendored_libraries  = [
                                 # 'build/openh264/lib/*.a',
                                 'build/openssl/lib/macos/*.a',
-                                'build/opus/dependencies/lib/*.a',
                                 'build/pjproject/src/pjlib/lib/*darwin18.6.0.a',
                                 'build/pjproject/src/pjlib-util/lib/*darwin18.6.0.a',
                                 'build/pjproject/src/pjmedia/lib/*darwin18.6.0.a',
