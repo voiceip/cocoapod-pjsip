@@ -1,6 +1,6 @@
 #!/bin/sh
 
-HAS_VIDEO=1 # set to zero to disable video
+HAS_VIDEO=0 # set to zero to disable video
 
 # see http://stackoverflow.com/a/3915420/318790
 function realpath { echo $(cd $(dirname "$1"); pwd)/$(basename "$1"); }
@@ -9,7 +9,8 @@ __DIR__=`dirname "${__FILE__}"`
 
 # download
 function download() {
-    "${__DIR__}/download.sh" "$1" "$2" #--no-cache
+    echo "skip download"
+    #"${__DIR__}/download.sh" "$1" "$2" #--no-cache
 }
 
 DEVELOPER=$(xcode-select --print-path)
@@ -26,7 +27,7 @@ OSX_PLATFORM=$(xcrun --sdk macosx --show-sdk-platform-path)
 OSX_SDK=$(xcrun --sdk macosx --show-sdk-path)
 
 BASE_DIR="$1"
-PJSIP_URL="http://www.pjsip.org/release/${PJSIP_VERSION:-2.9}/pjproject-${PJSIP_VERSION:-2.9}.tar.bz2"
+PJSIP_URL="https://github.com/pjsip/pjproject/archive/refs/tags/${PJSIP_VERSION:-2.9}.zip"
 PJSIP_DIR="$1/src"
 LIB_PATHS=("pjlib/lib" \
            "pjlib-util/lib" \
@@ -37,11 +38,12 @@ LIB_PATHS=("pjlib/lib" \
 
 OPENSSL_PREFIX=
 OPUS_PREFIX=
+BCG729_PREFIX=
 while [ "$#" -gt 0 ]; do
     case $1 in
         --with-openssl)
             if [ "$#" -gt 1 ]; then
-                OPENSSL_PREFIX=$(python -c "import os,sys; print os.path.realpath(sys.argv[1])" "$2")
+                OPENSSL_PREFIX=$(python3 -c "import os,sys; print (os.path.realpath(sys.argv[1]))" "$2")
                 shift 2
                 continue
             else
@@ -51,11 +53,21 @@ while [ "$#" -gt 0 ]; do
             ;;
         --with-opus)
             if [ "$#" -gt 1 ]; then
-                OPUS_PREFIX=$(python -c "import os,sys; print os.path.realpath(sys.argv[1])" "$2")
+                OPUS_PREFIX=$(python3 -c "import os,sys; print (os.path.realpath(sys.argv[1]))" "$2")
                 shift 2
                 continue
             else
                 echo 'ERROR: Must specify a non-empty "--with-opus PREFIX" argument.' >&2
+                exit 1
+            fi
+            ;;
+        --with-bcg729)
+            if [ "$#" -gt 1 ]; then
+                BCG729_PREFIX=$(python3 -c "import os,sys; print (os.path.realpath(sys.argv[1]))" "$2")
+                shift 2
+                continue
+            else
+                echo 'ERROR: Must specify a non-empty "--with-bcg729 PREFIX" argument.' >&2
                 exit 1
             fi
             ;;
@@ -103,6 +115,7 @@ function configure () {
 	fi
 
 	echo "#define PJ_HAS_IPV6 1" >> "${PJSIP_CONFIG_PATH}" # Enable IPV6
+	echo "#define PJMEDIA_HAS_BCG729  1" >> "${PJSIP_CONFIG_PATH}" # Enable g729
 	echo "#include <pj/config_site_sample.h>" >> "${PJSIP_CONFIG_PATH}" # Include example config
 
 	# flags
@@ -113,6 +126,8 @@ function configure () {
 	if [ "$TYPE" == "macos" ]; then
 		# OSX
 		export DEVPATH="${OSX_PLATFORM}/Developer"
+		export CFLAGS="${CFLAGS} -mmacosx-version-min=${OSX_DEPLOYMENT_VERSION}"
+		export LDFLAGS="${LDFLAGS} -mmacosx-version-min=${OSX_DEPLOYMENT_VERSION}"
 	elif [ "$TYPE" == "ios" ]; then
 		# iOS
 		if [ "$ARCH" == "x86_64" ] || [ "$ARCH" == "i386" ]; then
@@ -135,6 +150,10 @@ function configure () {
 		CONFIGURE="${CONFIGURE} --with-opus=${OPUS_PREFIX}"
 	fi
 
+	if [[ ${BCG729_PREFIX} ]]; then
+		CONFIGURE="${CONFIGURE} --with-bcg729=${BCG729_PREFIX}"
+	fi
+
 	# flags
 	if [[ ! ${CFLAGS} ]]; then
 		export CFLAGS=
@@ -150,7 +169,7 @@ function configure () {
 			export LDFLAGS="${LDFLAGS} -L${OPENSSL_PREFIX}/lib/macos"
 		fi
 	fi
-	export LDFLAGS="${LDFLAGS} -lstdc++"
+	export LDFLAGS="${LDFLAGS} -lstdc++ "
 
 	# log
 	if [ -f "${LOG}" ]; then
@@ -159,8 +178,9 @@ function configure () {
 	fi
 
 	clean_libs ${ARCH} ${TYPE}
-	make distclean >> ${LOG} 2>&1
-	ARCH="-arch ${ARCH}" ${CONFIGURE} >> ${LOG} 2>&1
+	make distclean | tee -a ${LOG} 2>&1
+	echo "$CONFIGURE"
+	ARCH="-arch ${ARCH}" ${CONFIGURE} | tee -a ${LOG} 2>&1
 }
 
 function build () {
@@ -176,9 +196,9 @@ function build () {
 	configure $TYPE $ARCH $LOG
 
 	echo "Building for ${TYPE} ${ARCH}..."
-	make dep >> ${LOG} 2>&1
-	make clean >> ${LOG}
-	make lib >> ${LOG} 2>&1
+	make dep | tee -a  ${LOG} 2>&1
+	make clean | tee -a  ${LOG}
+	make lib | tee -a  ${LOG} 2>&1
 
 	copy_libs ${ARCH} ${TYPE}
 }
@@ -257,14 +277,14 @@ function do_lipo() {
 download "${PJSIP_URL}" "${PJSIP_DIR}"
 
 
-build "i386" "${IPHONESIMULATOR_SDK}" "ios"
-build "x86_64" "${IPHONESIMULATOR_SDK}" "ios"
-build "armv7" "${IPHONEOS_SDK}" "ios"
-build "armv7s" "${IPHONEOS_SDK}" "ios"
-build "arm64" "${IPHONEOS_SDK}" "ios"
+# build "i386" "${IPHONESIMULATOR_SDK}" "ios"
+# build "x86_64" "${IPHONESIMULATOR_SDK}" "ios"
+# build "armv7" "${IPHONEOS_SDK}" "ios"
+# build "armv7s" "${IPHONEOS_SDK}" "ios"
+# build "arm64" "${IPHONEOS_SDK}" "ios"
 
 # We don't support x86 for macOS.
 build "x86_64" "${OSX_SDK}" "macos"
 
-do_lipo "ios" "i386" "x86_64" "armv7" "armv7s" "arm64"
-do_lipo "macos" "x86_64"
+# do_lipo "ios" "i386" "x86_64" "armv7" "armv7s" "arm64"
+do_lipo "macos" "x86_64" #"arm64"

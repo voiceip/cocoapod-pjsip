@@ -41,7 +41,7 @@ if [[ "${FILE}" == *"zip"* ]]; then
     pushd . > /dev/null
 
     cd "${FINAL_PATH}"
-    tar -xf "${DOWNLOAD_PATH}"
+    unzip -q  "${DOWNLOAD_PATH}"
 
     NUMBER_OF_LINES=`ls -1 | wc -l`
     if (( ${NUMBER_OF_LINES} == 1 )); then

@@ -23,8 +23,9 @@
 #  Choose your libopus version and your currently-installed iOS SDK version:
 #
 VERSION=${OPUS_VERSION:-"1.3.1"}
-SDKVERSION="12.2"
+SDKVERSION="12.3"
 MINIOSVERSION=${IOS_MIN_SDK_VERSION:-"8.0"}
+MINOSXVERSION=${OSX_MIN_SDK_VERSION:-"10.12"}
 
 ###########################################################################
 #
@@ -47,14 +48,14 @@ fi
 
 # No need to change this since xcode build will only compile in the
 # necessary bits from the libraries we create
-ARCHS="armv7 armv7s arm64 i386 x86_64"
+ARCHS="x86_64"
 
 DEVELOPER=`xcode-select -print-path`
 #DEVELOPER="/Applications/Xcode.app/Contents/Developer"
 
 # cd "`dirname \"$0\"`"
 # REPOROOT=$(pwd)
-REPOROOT=$(python -c "import os,sys; print os.path.realpath(sys.argv[1])" "$1")
+REPOROOT=$(python3 -c "import os,sys; print (os.path.realpath(sys.argv[1]))" "$1")
 
 # Where we'll end up storing things in the end
 OUTPUTDIR="${REPOROOT}/dependencies"
@@ -104,15 +105,18 @@ for ARCH in ${ARCHS}
 do
     echo "** Compiling ${ARCH}"
     if [ "${ARCH}" == "i386" ] || [ "${ARCH}" == "x86_64" ]; then
-        PLATFORM="iPhoneSimulator"
-        EXTRA_FLAGS="--with-pic"
+        # PLATFORM="iPhoneSimulator"
+        # EXTRA_FLAGS="--with-pic"
         EXTRA_CFLAGS="-arch ${ARCH}"
         EXTRA_CONFIG="--host=${ARCH}-apple-darwin"
     else
         PLATFORM="iPhoneOS"
         EXTRA_CFLAGS="-arch ${ARCH}"
-        EXTRA_CONFIG="--host=arm-apple-darwin"
+        # EXTRA_CONFIG="--host=arm-apple-darwin"
     fi
+
+    PLATFORM=MacOSX
+
     
     mkdir -p "${INTERDIR}/${PLATFORM}${SDKVERSION}-${ARCH}.sdk"
     
@@ -121,9 +125,9 @@ do
     --with-pic --disable-extra-programs --disable-doc ${EXTRA_CONFIG} \
     --prefix="${INTERDIR}/${PLATFORM}${SDKVERSION}-${ARCH}.sdk" \
     $EXTRA_CONFIG \
-    LDFLAGS="$LDFLAGS ${OPT_LDFLAGS} -fPIE -miphoneos-version-min=${MINIOSVERSION} -L${OUTPUTDIR}/lib" \
-    CFLAGS="$CFLAGS ${EXTRA_CFLAGS} ${OPT_CFLAGS} -fPIE -miphoneos-version-min=${MINIOSVERSION} -I${OUTPUTDIR}/include -isysroot ${DEVELOPER}/Platforms/${PLATFORM}.platform/Developer/SDKs/${PLATFORM}${SDKVERSION}.sdk" \
-    
+    LDFLAGS="$LDFLAGS ${OPT_LDFLAGS} -fPIE  -mmacosx-version-min=${MINOSXVERSION} -L${OUTPUTDIR}/lib" \
+    CFLAGS="$CFLAGS ${EXTRA_CFLAGS} ${OPT_CFLAGS} -fPIE  -mmacosx-version-min=${MINOSXVERSION} -I${OUTPUTDIR}/include -isysroot ${DEVELOPER}/Platforms/${PLATFORM}.platform/Developer/SDKs/${PLATFORM}${SDKVERSION}.sdk" \
+    # -miphoneos-version-min=${MINIOSVERSION}
     # Build the application and install it to the fake SDK intermediary dir
     # we have set up. Make sure to clean up afterward because we will re-use
     # this source tree to cross-compile other targets.
@@ -147,6 +151,7 @@ for OUTPUT_LIB in ${OUTPUT_LIBS}; do
         else
             PLATFORM="iPhoneOS"
         fi
+        PLATFORM=MacOSX
         INPUT_ARCH_LIB="${INTERDIR}/${PLATFORM}${SDKVERSION}-${ARCH}.sdk/lib/${OUTPUT_LIB}"
         if [ -e $INPUT_ARCH_LIB ]; then
             INPUT_LIBS="${INPUT_LIBS} ${INPUT_ARCH_LIB}"
@@ -169,6 +174,7 @@ for ARCH in ${ARCHS}; do
     else
         PLATFORM="iPhoneOS"
     fi
+    PLATFORM=MacOSX
     cp -R ${INTERDIR}/${PLATFORM}${SDKVERSION}-${ARCH}.sdk/include/* ${OUTPUTDIR}/include/
     if [ $? == "0" ]; then
         # We only need to copy the headers over once. (So break out of forloop
