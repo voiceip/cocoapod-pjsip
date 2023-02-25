@@ -31,7 +31,7 @@ build/openssl/lib/.DS_Store
 !build/bcg729
 build/bcg729/*
 
-!build/bcg729/lib/
+!build/bcg729/lib/*.a
 !build/bcg729/include/
 
 
