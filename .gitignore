@@ -26,6 +26,15 @@ build/openssl/*
 !build/openssl/lib/*
 build/openssl/lib/.DS_Store
 
+
+#bcg729
+!build/bcg729
+build/bcg729/*
+
+!build/bcg729/lib/
+!build/bcg729/include/
+
+
 # pjsip
 !build/pjproject
 build/pjproject/*
